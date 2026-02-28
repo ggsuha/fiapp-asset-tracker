@@ -22,6 +22,14 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _showWalletFab = false;
 
+  BoxDecoration get _backgroundDecoration => const BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0xFFEAF6FF), Color(0xFFF8FBFF), Color(0xFFF6FBF8)],
+    ),
+  );
+
   Future<void> _showCreateWalletDialog(
     BuildContext context,
     WidgetRef ref,
@@ -38,14 +46,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Name',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   onChanged: (value) => name = value,
-                  decoration: const InputDecoration(labelText: 'Name'),
+                  decoration: const InputDecoration(hintText: 'Wallet name'),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Currency',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   initialValue: currency,
-                  decoration: const InputDecoration(labelText: 'Currency'),
+                  decoration: const InputDecoration(
+                    hintText: 'Select currency',
+                  ),
                   items: kSupportedCurrencies
                       .map(
                         (item) =>
@@ -102,50 +128,78 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Currency Settings'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: mainCurrency,
-                decoration: const InputDecoration(labelText: 'Main Currency'),
-                items: kSupportedCurrencies
-                    .map(
-                      (item) =>
-                          DropdownMenuItem(value: item, child: Text(item)),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  setState(() => mainCurrency = value);
-                },
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                initialValue: usdToIdrRateText,
-                onChanged: (value) => usdToIdrRateText = value,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Main Currency',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'USD to IDR Rate',
-                  helperText: '1 USD = ? IDR',
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  initialValue: mainCurrency,
+                  decoration: const InputDecoration(
+                    hintText: 'Select currency',
+                  ),
+                  items: kSupportedCurrencies
+                      .map(
+                        (item) =>
+                            DropdownMenuItem(value: item, child: Text(item)),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() => mainCurrency = value);
+                  },
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                initialValue: sgdToIdrRateText,
-                onChanged: (value) => sgdToIdrRateText = value,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'USD to IDR Rate',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'SGD to IDR Rate',
-                  helperText: '1 SGD = ? IDR',
+                const SizedBox(height: 6),
+                TextFormField(
+                  initialValue: usdToIdrRateText,
+                  onChanged: (value) => usdToIdrRateText = value,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 16000',
+                    helperText: '1 USD = ? IDR',
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'SGD to IDR Rate',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  initialValue: sgdToIdrRateText,
+                  onChanged: (value) => sgdToIdrRateText = value,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 12000',
+                    helperText: '1 SGD = ? IDR',
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -375,84 +429,143 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               label: const Text('Wallet'),
             )
           : null,
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, _showWalletFab ? 96 : 16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+      body: Container(
+        decoration: _backgroundDecoration,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, _showWalletFab ? 96 : 16),
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0E7490), Color(0xFF0369A1)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0369A1).withValues(alpha: 0.22),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Total Net Worth'),
-                  const SizedBox(height: 4),
+                  Text(
+                    'Total Net Worth',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   Text(
                     asMoney(netWorth, currency: settings.mainCurrency),
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Net Worth Over Time'),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 240,
-            child: netWorthHistoryAsync.when(
-              data: (points) {
-                if (points.isEmpty) {
-                  return const Center(child: Text('No history yet'));
+            const SizedBox(height: 18),
+            Text(
+              'Net Worth Over Time',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  height: 240,
+                  child: netWorthHistoryAsync.when(
+                    data: (points) {
+                      if (points.isEmpty) {
+                        return const Center(child: Text('No history yet'));
+                      }
+                      return LineChart(
+                        _buildNetWorthChartData(points, settings.mainCurrency),
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Text('Error: $e'),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Wallets', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            walletSummariesAsync.when(
+              data: (wallets) {
+                if (wallets.isEmpty) {
+                  return const Text('Create your first wallet');
                 }
-                return LineChart(
-                  _buildNetWorthChartData(points, settings.mainCurrency),
+                return Column(
+                  children: wallets
+                      .map(
+                        (wallet) => Card(
+                          child: ListTile(
+                            leading: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF0E7490,
+                                ).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.account_balance_wallet_outlined,
+                                color: Color(0xFF0E7490),
+                              ),
+                            ),
+                            title: Text(wallet.name),
+                            subtitle: Text(wallet.currency),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  asMoney(
+                                    wallet.totalValue,
+                                    currency: wallet.currency,
+                                  ),
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  size: 16,
+                                  color: Colors.black54,
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => WalletDetailScreen(
+                                    walletId: wallet.walletId,
+                                    walletName: wallet.name,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Text('Error: $e'),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Wallets'),
-          const SizedBox(height: 8),
-          walletSummariesAsync.when(
-            data: (wallets) {
-              if (wallets.isEmpty) {
-                return const Text('Create your first wallet');
-              }
-              return Column(
-                children: wallets
-                    .map(
-                      (wallet) => Card(
-                        child: ListTile(
-                          title: Text(wallet.name),
-                          subtitle: Text(wallet.currency),
-                          trailing: Text(
-                            asMoney(
-                              wallet.totalValue,
-                              currency: wallet.currency,
-                            ),
-                          ),
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => WalletDetailScreen(
-                                  walletId: wallet.walletId,
-                                  walletName: wallet.name,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Error: $e'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

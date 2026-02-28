@@ -212,38 +212,68 @@ class AssetDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          assetAsync.when(
-            data: (asset) {
-              if (asset == null) {
-                return const Text('Unknown Asset');
-              }
-              final type = AssetType.fromDb(asset.type);
-              final showQty = _showQuantity(type);
-              final snapshot = snapshotAsync.asData?.value;
-              final qty = snapshot?.currentQuantity ?? 0;
-              final price = snapshot?.currentPrice ?? 0;
-              final total = snapshot?.totalValue ?? 0;
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF3F9FF), Color(0xFFFAFCFF), Color(0xFFF8FCFA)],
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            assetAsync.when(
+              data: (asset) {
+                if (asset == null) {
+                  return const Text('Unknown Asset');
+                }
+                final type = AssetType.fromDb(asset.type);
+                final showQty = _showQuantity(type);
+                final snapshot = snapshotAsync.asData?.value;
+                final qty = snapshot?.currentQuantity ?? 0;
+                final price = snapshot?.currentPrice ?? 0;
+                final total = snapshot?.totalValue ?? 0;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    asset.name,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Total Value: ${asMoney(total, currency: asset.currency)}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (showQty) ...[
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      asset.name,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Total Value: ${asMoney(total, currency: asset.currency)}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (showQty) ...[
+                          Expanded(
+                            child: Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Quantity',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(asWholeNumber(qty)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         Expanded(
                           child: Card(
                             child: Padding(
@@ -252,176 +282,176 @@ class AssetDetailScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Quantity',
+                                    'Price',
                                     style: Theme.of(
                                       context,
                                     ).textTheme.bodySmall,
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(asWholeNumber(qty)),
+                                  Text(
+                                    asMoney(price, currency: asset.currency),
+                                  ),
                                 ],
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
                       ],
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Price',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(asMoney(price, currency: asset.currency)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Error: $e'),
-          ),
-          const SizedBox(height: 20),
-          const Text('Value Over Time'),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 240,
-            child: historyAsync.when(
-              data: (points) {
-                final currency = assetAsync.asData?.value?.currency ?? 'IDR';
-                if (points.isEmpty) {
-                  return const Center(child: Text('No history yet'));
-                }
-                return LineChart(_buildHistoryChartData(points, currency));
+                    ),
+                  ],
+                );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Error: $e'),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text('Events'),
-          const SizedBox(height: 8),
-          eventsAsync.when(
-            data: (events) {
-              final currency = assetAsync.asData?.value?.currency ?? 'IDR';
-              final showQty = _showQuantity(
-                AssetType.fromDb(
-                  assetAsync.asData?.value?.type ?? AssetType.custom.dbValue,
-                ),
-              );
-
-              if (events.isEmpty) {
-                return const Text('No events yet');
-              }
-              return Column(
-                children: events
-                    .asMap()
-                    .entries
-                    .map((entry) {
-                      final index = entry.key;
-                      final event = entry.value;
-                      final metric = _eventMetric(
-                        events,
-                        index,
-                        showQty,
-                        currency,
+            const SizedBox(height: 20),
+            Text(
+              'Value Over Time',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  height: 240,
+                  child: historyAsync.when(
+                    data: (points) {
+                      final currency =
+                          assetAsync.asData?.value?.currency ?? 'IDR';
+                      if (points.isEmpty) {
+                        return const Center(child: Text('No history yet'));
+                      }
+                      return LineChart(
+                        _buildHistoryChartData(points, currency),
                       );
-                      final directionUi = _directionUi(metric.direction);
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Text('Error: $e'),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Events', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            eventsAsync.when(
+              data: (events) {
+                final currency = assetAsync.asData?.value?.currency ?? 'IDR';
+                final showQty = _showQuantity(
+                  AssetType.fromDb(
+                    assetAsync.asData?.value?.type ?? AssetType.custom.dbValue,
+                  ),
+                );
 
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      asCompactDate(event.createdAt),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Colors.grey.shade700,
-                                          ),
-                                    ),
-                                    if (event.note != null &&
-                                        event.note!.trim().isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        event.note!,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.bodySmall,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    metric.metric,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    metric.value,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
+                if (events.isEmpty) {
+                  return const Text('No events yet');
+                }
+                return Column(
+                  children: events
+                      .asMap()
+                      .entries
+                      .map((entry) {
+                        final index = entry.key;
+                        final event = entry.value;
+                        final metric = _eventMetric(
+                          events,
+                          index,
+                          showQty,
+                          currency,
+                        );
+                        final directionUi = _directionUi(metric.direction);
+
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        directionUi.icon,
-                                        size: 14,
-                                        color: directionUi.color,
-                                      ),
-                                      const SizedBox(width: 4),
                                       Text(
-                                        directionUi.label,
+                                        asCompactDate(event.createdAt),
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodySmall
                                             ?.copyWith(
-                                              color: directionUi.color,
+                                              color: Colors.grey.shade700,
                                             ),
                                       ),
+                                      if (event.note != null &&
+                                          event.note!.trim().isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          event.note!,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ],
                                     ],
                                   ),
-                                ],
-                              ),
-                            ],
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      metric.metric,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      metric.value,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          directionUi.icon,
+                                          size: 14,
+                                          color: directionUi.color,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          directionUi.label,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: directionUi.color,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    })
-                    .toList(growable: false),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Error: $e'),
-          ),
-        ],
+                        );
+                      })
+                      .toList(growable: false),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Text('Error: $e'),
+            ),
+          ],
+        ),
       ),
     );
   }

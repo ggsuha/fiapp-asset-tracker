@@ -123,85 +123,108 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.isEdit ? 'Edit Asset' : 'Add Asset')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Name'),
-              validator: (value) =>
-                  (value == null || value.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<AssetType>(
-              initialValue: _type,
-              decoration: const InputDecoration(labelText: 'Type'),
-              items: AssetType.values
-                  .map(
-                    (type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type.dbValue),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => _type = value ?? _type),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _currency,
-              decoration: const InputDecoration(labelText: 'Currency'),
-              items: kSupportedCurrencies
-                  .map(
-                    (item) => DropdownMenuItem(value: item, child: Text(item)),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) {
-                  return;
-                }
-                setState(() => _currency = value);
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _quantityController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF2F8FF), Color(0xFFF9FCFF), Color(0xFFF7FBF8)],
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+                child: Text(
+                  widget.isEdit
+                      ? 'Update your asset values and metadata'
+                      : 'Create a new asset in this wallet',
+                ),
               ),
-              decoration: const InputDecoration(labelText: 'Quantity'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _priceController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: (value) =>
+                    (value == null || value.trim().isEmpty) ? 'Required' : null,
               ),
-              decoration: const InputDecoration(labelText: 'Price'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _noteController,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? 'Saving...' : 'Save'),
-            ),
-            if (widget.assetId != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<AssetType>(
+                initialValue: _type,
+                decoration: const InputDecoration(labelText: 'Type'),
+                items: AssetType.values
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Text(type.dbValue),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => _type = value ?? _type),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _currency,
+                decoration: const InputDecoration(labelText: 'Currency'),
+                items: kSupportedCurrencies
+                    .map(
+                      (item) =>
+                          DropdownMenuItem(value: item, child: Text(item)),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() => _currency = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _quantityController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Quantity'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _priceController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Price'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _noteController,
+                decoration: const InputDecoration(labelText: 'Note (optional)'),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? 'Saving...' : 'Save'),
+              ),
+              if (widget.assetId != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'State is event-sourced. Save creates ADJUSTMENT/PRICE_UPDATE events.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+              const SizedBox(height: 16),
               Text(
-                'State is event-sourced. Save creates ADJUSTMENT/PRICE_UPDATE events.',
-                style: Theme.of(context).textTheme.bodySmall,
+                'Preview: ${asMoney((double.tryParse(_quantityController.text) ?? 0) * (double.tryParse(_priceController.text) ?? 0), currency: _currency)}',
               ),
             ],
-            const SizedBox(height: 16),
-            Text(
-              'Preview: ${asMoney((double.tryParse(_quantityController.text) ?? 0) * (double.tryParse(_priceController.text) ?? 0), currency: _currency)}',
-            ),
-          ],
+          ),
         ),
       ),
     );
