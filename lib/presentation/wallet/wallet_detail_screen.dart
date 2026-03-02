@@ -462,20 +462,56 @@ class _WalletDetailScreenState extends ConsumerState<WalletDetailScreen> {
                         return const Center(child: Text('No history yet'));
                       }
                       final filteredPoints = _filterHistoryByRange(points);
+                      final minPoint = filteredPoints.reduce(
+                        (a, b) => a.value <= b.value ? a : b,
+                      );
+                      final maxPoint = filteredPoints.reduce(
+                        (a, b) => a.value >= b.value ? a : b,
+                      );
                       final safeIndex =
                           (_selectedSpotIndex != null &&
                               _selectedSpotIndex! < filteredPoints.length)
                           ? _selectedSpotIndex!
                           : filteredPoints.length - 1;
-                      return LineChart(
-                        _buildWalletChartData(
-                          filteredPoints,
-                          selectedSpotIndex: safeIndex,
-                          hideValues: hideValues,
-                          onSpotSelected: (index) {
-                            setState(() => _selectedSpotIndex = index);
-                          },
-                        ),
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: LineChart(
+                              _buildWalletChartData(
+                                filteredPoints,
+                                selectedSpotIndex: safeIndex,
+                                hideValues: hideValues,
+                                onSpotSelected: (index) {
+                                  setState(() => _selectedSpotIndex = index);
+                                },
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Text(
+                              _maskedMoney(maxPoint.value, hideValues),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 2,
+                            left: 2,
+                            child: Text(
+                              _maskedMoney(minPoint.value, hideValues),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                        ],
                       );
                     },
                     loading: () =>
