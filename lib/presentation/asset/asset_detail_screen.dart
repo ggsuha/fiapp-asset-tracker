@@ -10,7 +10,18 @@ import '../../domain/models.dart';
 import '../../providers/app_providers.dart';
 import 'add_edit_asset_screen.dart';
 
-class AssetDetailScreen extends ConsumerWidget {
+enum _ChartRange {
+  oneDay,
+  oneMonth,
+  threeMonths,
+  ytd,
+  oneYear,
+  threeYears,
+  fiveYears,
+  all,
+}
+
+class AssetDetailScreen extends ConsumerStatefulWidget {
   const AssetDetailScreen({
     super.key,
     required this.assetId,
@@ -19,6 +30,19 @@ class AssetDetailScreen extends ConsumerWidget {
 
   final String assetId;
   final String walletId;
+
+  @override
+  ConsumerState<AssetDetailScreen> createState() => _AssetDetailScreenState();
+}
+
+class _AssetDetailScreenState extends ConsumerState<AssetDetailScreen> {
+  static const _brandGreen = Color(0xFF00A86B);
+  static const _brandGreenDark = Color(0xFF0A8F5B);
+  static const _bgTop = Color(0xFFF2F7F3);
+  static const _bgBottom = Color(0xFFEFF6F1);
+
+  _ChartRange _selectedRange = _ChartRange.oneMonth;
+  int? _selectedSpotIndex;
 
   bool _showQuantity(AssetType type) {
     return type != AssetType.cash;
@@ -39,7 +63,6 @@ class AssetDetailScreen extends ConsumerWidget {
     List<AssetEvent> events,
     int index,
     bool showQty,
-    String currency,
   ) {
     final event = events[index];
     if (event.quantityDelta != null) {
@@ -62,11 +85,7 @@ class AssetDetailScreen extends ConsumerWidget {
       }
 
       if (previousPrice == null) {
-        return (
-          metric: 'Price',
-          value: asMoney(currentPrice, currency: currency),
-          direction: 0,
-        );
+        return (metric: 'Price', value: asMoney(currentPrice), direction: 0);
       }
 
       final delta = currentPrice - previousPrice;
@@ -84,7 +103,7 @@ class AssetDetailScreen extends ConsumerWidget {
     if (direction > 0) {
       return (
         icon: Icons.trending_up,
-        color: const Color(0xFF15803D),
+        color: _brandGreenDark,
         label: 'Increase',
       );
     }
@@ -98,10 +117,26 @@ class AssetDetailScreen extends ConsumerWidget {
     return (icon: Icons.drag_handle, color: Colors.grey, label: 'No change');
   }
 
+  String _maskedMoney(double value, bool hidden) {
+    if (hidden) {
+      return '***';
+    }
+    return asMoney(value);
+  }
+
+  String _maskedNumber(double value, bool hidden) {
+    if (hidden) {
+      return '***';
+    }
+    return asWholeNumber(value);
+  }
+
   LineChartData _buildHistoryChartData(
-    List<AssetValuePoint> points,
-    String currency,
-  ) {
+    List<AssetValuePoint> points, {
+    required int selectedSpotIndex,
+    required void Function(int? index) onSpotSelected,
+    required bool hideValues,
+  }) {
     final fixedPoints = points.length == 1
         ? [
             points.first,
@@ -112,71 +147,118 @@ class AssetDetailScreen extends ConsumerWidget {
           ]
         : points;
 
+    final safeSelectedIndex = selectedSpotIndex.clamp(
+      0,
+      fixedPoints.length - 1,
+    );
+
     final maxValue = fixedPoints.fold<double>(
       0,
       (prev, item) => max(prev, item.value),
     );
-    final yInterval = max(maxValue / 4, 1.0);
+    final minValue = fixedPoints.fold<double>(
+      fixedPoints.first.value,
+      (prev, item) => min(prev, item.value),
+    );
+    final range = max(maxValue - minValue, 1.0);
 
     return LineChartData(
       minX: 0,
       maxX: (fixedPoints.length - 1).toDouble(),
-      minY: 0,
-      maxY: max(maxValue * 1.2, 1.0),
+      minY: max(minValue - (range * 0.18), 0),
+      maxY: maxValue + (range * 0.18),
       borderData: FlBorderData(show: false),
-      gridData: FlGridData(show: true, horizontalInterval: yInterval),
-      titlesData: FlTitlesData(
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
+      clipData: const FlClipData.all(),
+      gridData: FlGridData(show: false),
+      titlesData: const FlTitlesData(
+        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      ),
+      lineTouchData: LineTouchData(
+        enabled: true,
+        handleBuiltInTouches: true,
+        touchCallback: (_, touchResponse) {
+          final spots = touchResponse?.lineBarSpots;
+          if (spots == null || spots.isEmpty) return;
+          onSpotSelected(spots.first.x.toInt());
+        },
+        touchTooltipData: LineTouchTooltipData(
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
+          tooltipPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8,
+          ),
+          getTooltipColor: (_) => Colors.white,
+          getTooltipItems: (spots) => spots
+              .map((spot) {
+                final index = spot.x.toInt().clamp(0, fixedPoints.length - 1);
+                final point = fixedPoints[index];
+                return LineTooltipItem(
+                  '${asCompactDate(point.date)}\n${_maskedMoney(point.value, hideValues)}',
+                  const TextStyle(
+                    color: Color(0xFF111827),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                );
+              })
+              .toList(growable: false),
         ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            interval: max((fixedPoints.length / 4).floorToDouble(), 1.0),
-            getTitlesWidget: (value, _) {
-              final index = value.round();
-              if (index < 0 || index >= fixedPoints.length) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  asCompactDate(fixedPoints[index].date),
-                  style: const TextStyle(fontSize: 10),
+        getTouchedSpotIndicator: (_, spotIndexes) {
+          return spotIndexes
+              .map(
+                (_) => TouchedSpotIndicatorData(
+                  FlLine(
+                    color: _brandGreenDark.withValues(alpha: 0.45),
+                    strokeWidth: 1,
+                  ),
+                  FlDotData(
+                    getDotPainter: (spot, percent, bar, index) =>
+                        FlDotCirclePainter(
+                          radius: 5,
+                          color: _brandGreen,
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        ),
+                  ),
                 ),
-              );
-            },
-          ),
-        ),
-        leftTitles: AxisTitles(
-          axisNameWidget: Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(currency, style: const TextStyle(fontSize: 10)),
-          ),
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 44,
-            interval: yInterval,
-            getTitlesWidget: (value, _) => Text(
-              value >= 1000
-                  ? '${(value / 1000).toStringAsFixed(0)}K'
-                  : value.toStringAsFixed(0),
-              style: const TextStyle(fontSize: 10),
-            ),
-          ),
-        ),
+              )
+              .toList(growable: false);
+        },
       ),
       lineBarsData: [
         LineChartBarData(
           isCurved: true,
-          color: const Color(0xFF2563EB),
-          dotData: FlDotData(show: points.length == 1),
+          color: _brandGreen,
+          dotData: FlDotData(
+            show: true,
+            checkToShowDot: (spot, barData) =>
+                spot.x.toInt() == safeSelectedIndex,
+            getDotPainter: (spot, percent, barData, index) =>
+                FlDotCirclePainter(
+                  radius: 5,
+                  color: _brandGreen,
+                  strokeWidth: 2,
+                  strokeColor: Colors.white,
+                ),
+          ),
           belowBarData: BarAreaData(
             show: true,
-            color: const Color(0xFFBFDBFE).withValues(alpha: 0.5),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                _brandGreen.withValues(alpha: 0.28),
+                _brandGreen.withValues(alpha: 0.02),
+              ],
+            ),
           ),
           barWidth: 3,
+          showingIndicators: [safeSelectedIndex],
           spots: [
             for (var i = 0; i < fixedPoints.length; i++)
               FlSpot(i.toDouble(), fixedPoints[i].value),
@@ -186,26 +268,176 @@ class AssetDetailScreen extends ConsumerWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final assetAsync = ref.watch(assetProvider(assetId));
-    final snapshotAsync = ref.watch(
-      assetSnapshotProvider((walletId: walletId, assetId: assetId)),
+  DateTime? _rangeStart(_ChartRange range, DateTime now) {
+    switch (range) {
+      case _ChartRange.oneDay:
+        return now.subtract(const Duration(days: 1));
+      case _ChartRange.oneMonth:
+        return now.subtract(const Duration(days: 30));
+      case _ChartRange.threeMonths:
+        return now.subtract(const Duration(days: 90));
+      case _ChartRange.ytd:
+        return DateTime(now.year);
+      case _ChartRange.oneYear:
+        return DateTime(now.year - 1, now.month, now.day);
+      case _ChartRange.threeYears:
+        return DateTime(now.year - 3, now.month, now.day);
+      case _ChartRange.fiveYears:
+        return DateTime(now.year - 5, now.month, now.day);
+      case _ChartRange.all:
+        return null;
+    }
+  }
+
+  List<AssetValuePoint> _filterHistoryByRange(List<AssetValuePoint> points) {
+    if (points.isEmpty) {
+      return points;
+    }
+    final sorted = [...points]..sort((a, b) => a.date.compareTo(b.date));
+    final start = _rangeStart(_selectedRange, DateTime.now());
+    if (start == null) {
+      return sorted;
+    }
+
+    final filtered = sorted
+        .where((point) => !point.date.isBefore(start))
+        .toList(growable: false);
+    return filtered.isEmpty ? [sorted.last] : filtered;
+  }
+
+  String _rangeLabel(_ChartRange range) {
+    switch (range) {
+      case _ChartRange.oneDay:
+        return '1D';
+      case _ChartRange.oneMonth:
+        return '1M';
+      case _ChartRange.threeMonths:
+        return '3M';
+      case _ChartRange.ytd:
+        return 'YTD';
+      case _ChartRange.oneYear:
+        return '1Y';
+      case _ChartRange.threeYears:
+        return '3Y';
+      case _ChartRange.fiveYears:
+        return '5 Y';
+      case _ChartRange.all:
+        return 'All';
+    }
+  }
+
+  String _rangePeriodLabel(_ChartRange range) {
+    switch (range) {
+      case _ChartRange.oneDay:
+        return '1 Hari';
+      case _ChartRange.oneMonth:
+        return '1 Bulan';
+      case _ChartRange.threeMonths:
+        return '3 Bulan';
+      case _ChartRange.ytd:
+        return 'YTD';
+      case _ChartRange.oneYear:
+        return '1 Tahun';
+      case _ChartRange.threeYears:
+        return '3 Tahun';
+      case _ChartRange.fiveYears:
+        return '5 Tahun';
+      case _ChartRange.all:
+        return 'All Time';
+    }
+  }
+
+  Widget _buildRangeFilter() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _ChartRange.values
+            .map((range) {
+              final selected = range == _selectedRange;
+              return Padding(
+                padding: const EdgeInsets.only(right: 18),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    setState(() {
+                      _selectedRange = range;
+                      _selectedSpotIndex = null;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2, bottom: 2),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _rangeLabel(range),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: selected
+                                ? _brandGreen
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOut,
+                          height: 3,
+                          width: 20,
+                          decoration: BoxDecoration(
+                            color: selected ? _brandGreen : Colors.transparent,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            })
+            .toList(growable: false),
+      ),
     );
-    final eventsAsync = ref.watch(assetEventsProvider(assetId));
-    final historyAsync = ref.watch(assetValueHistoryProvider(assetId));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final assetAsync = ref.watch(assetProvider(widget.assetId));
+    final snapshotAsync = ref.watch(
+      assetSnapshotProvider((
+        walletId: widget.walletId,
+        assetId: widget.assetId,
+      )),
+    );
+    final hideValues = ref.watch(hideValuesProvider);
+    final eventsAsync = ref.watch(assetEventsProvider(widget.assetId));
+    final historyAsync = ref.watch(assetValueHistoryProvider(widget.assetId));
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Asset Detail'),
         actions: [
           IconButton(
+            onPressed: () => ref.read(hideValuesProvider.notifier).toggle(),
+            tooltip: hideValues ? 'Show Values' : 'Hide Values',
+            icon: Icon(
+              hideValues
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) =>
-                      AddEditAssetScreen(walletId: walletId, assetId: assetId),
+                  builder: (_) => AddEditAssetScreen(
+                    walletId: widget.walletId,
+                    assetId: widget.assetId,
+                  ),
                 ),
               );
             },
@@ -217,7 +449,7 @@ class AssetDetailScreen extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF3F9FF), Color(0xFFFAFCFF), Color(0xFFF8FCFA)],
+            colors: [_bgTop, _bgBottom],
           ),
         ),
         child: ListView(
@@ -243,9 +475,26 @@ class AssetDetailScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'Total Value: ${asMoney(total, currency: asset.currency)}',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [_brandGreen, _brandGreenDark],
+                        ),
+                      ),
+                      child: Text(
+                        'Total Value: ${_maskedMoney(total, hideValues)}',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -266,7 +515,7 @@ class AssetDetailScreen extends ConsumerWidget {
                                       ).textTheme.bodySmall,
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(asWholeNumber(qty)),
+                                    Text(_maskedNumber(qty, hideValues)),
                                   ],
                                 ),
                               ),
@@ -288,9 +537,7 @@ class AssetDetailScreen extends ConsumerWidget {
                                     ).textTheme.bodySmall,
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    asMoney(price, currency: asset.currency),
-                                  ),
+                                  Text(_maskedMoney(price, hideValues)),
                                 ],
                               ),
                             ),
@@ -306,24 +553,126 @@ class AssetDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Value Over Time',
-              style: Theme.of(context).textTheme.titleMedium,
+              'Value',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
+            historyAsync.when(
+              data: (points) {
+                if (points.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                final filteredPoints = _filterHistoryByRange(points);
+                final startValue = filteredPoints.first.value;
+                final endValue = filteredPoints.last.value;
+                final netDiff = endValue - startValue;
+                final netDiffPct = startValue == 0
+                    ? 0
+                    : (netDiff / startValue) * 100;
+                final isUp = netDiff >= 0;
+                final trendColor = isUp
+                    ? _brandGreenDark
+                    : const Color(0xFFB91C1C);
+                final trendPrefix = isUp ? '+' : '-';
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isUp
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_downward_rounded,
+                        size: 16,
+                        color: trendColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$trendPrefix${asMoney(netDiff.abs())} ($trendPrefix${netDiffPct.abs().toStringAsFixed(2)}%)',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: trendColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _rangePeriodLabel(_selectedRange),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: SizedBox(
-                  height: 240,
+                  height: 248,
                   child: historyAsync.when(
                     data: (points) {
-                      final currency =
-                          assetAsync.asData?.value?.currency ?? 'IDR';
                       if (points.isEmpty) {
                         return const Center(child: Text('No history yet'));
                       }
-                      return LineChart(
-                        _buildHistoryChartData(points, currency),
+                      final filteredPoints = _filterHistoryByRange(points);
+                      final minPoint = filteredPoints.reduce(
+                        (a, b) => a.value <= b.value ? a : b,
+                      );
+                      final maxPoint = filteredPoints.reduce(
+                        (a, b) => a.value >= b.value ? a : b,
+                      );
+                      final safeIndex =
+                          (_selectedSpotIndex != null &&
+                              _selectedSpotIndex! < filteredPoints.length)
+                          ? _selectedSpotIndex!
+                          : filteredPoints.length - 1;
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: LineChart(
+                              _buildHistoryChartData(
+                                filteredPoints,
+                                selectedSpotIndex: safeIndex,
+                                hideValues: hideValues,
+                                onSpotSelected: (index) {
+                                  setState(() {
+                                    _selectedSpotIndex = index;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Text(
+                              asMoney(maxPoint.value),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 2,
+                            left: 2,
+                            child: Text(
+                              asMoney(minPoint.value),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                        ],
                       );
                     },
                     loading: () =>
@@ -333,12 +682,18 @@ class AssetDetailScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+            _buildRangeFilter(),
             const SizedBox(height: 20),
-            Text('Events', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Events',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             eventsAsync.when(
               data: (events) {
-                final currency = assetAsync.asData?.value?.currency ?? 'IDR';
                 final showQty = _showQuantity(
                   AssetType.fromDb(
                     assetAsync.asData?.value?.type ?? AssetType.custom.dbValue,
@@ -355,12 +710,7 @@ class AssetDetailScreen extends ConsumerWidget {
                       .map((entry) {
                         final index = entry.key;
                         final event = entry.value;
-                        final metric = _eventMetric(
-                          events,
-                          index,
-                          showQty,
-                          currency,
-                        );
+                        final metric = _eventMetric(events, index, showQty);
                         final directionUi = _directionUi(metric.direction);
 
                         return Card(
@@ -411,7 +761,7 @@ class AssetDetailScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      metric.value,
+                                      hideValues ? '***' : metric.value,
                                       style: Theme.of(
                                         context,
                                       ).textTheme.titleMedium,

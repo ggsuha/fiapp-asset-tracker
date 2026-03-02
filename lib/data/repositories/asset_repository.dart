@@ -332,6 +332,75 @@ class AssetRepository {
     });
   }
 
+  Stream<List<NetWorthPoint>> watchWalletValueHistory(
+    String walletId, {
+    required CurrencySettings settings,
+    required String targetCurrency,
+  }) {
+    final query = _db.customSelect(
+      '''
+      SELECT
+        e.asset_id AS asset_id,
+        e.quantity_delta AS quantity_delta,
+        e.price_per_unit AS price_per_unit,
+        e.created_at AS event_created_at,
+        a.currency AS asset_currency
+      FROM asset_events e
+      INNER JOIN assets a ON a.id = e.asset_id
+      WHERE a.wallet_id = ?
+      ORDER BY e.created_at ASC, e.id ASC
+      ''',
+      variables: [Variable.withString(walletId)],
+      readsFrom: {_db.assetEvents, _db.assets},
+    );
+
+    return query.watch().map((rows) {
+      final quantityByAsset = <String, double>{};
+      final priceByAsset = <String, double>{};
+      final currencyByAsset = <String, String>{};
+      final convertedValueByAsset = <String, double>{};
+      final dailyValue = <DateTime, double>{};
+      double total = 0;
+
+      for (final row in rows) {
+        final assetId = row.read<String>('asset_id');
+        final quantityDelta = row.read<double?>('quantity_delta');
+        final pricePerUnit = row.read<double?>('price_per_unit');
+        final createdAt = row.read<DateTime>('event_created_at');
+        final assetCurrency = row.read<String>('asset_currency');
+        currencyByAsset[assetId] = assetCurrency;
+        final oldValue = convertedValueByAsset[assetId] ?? 0;
+
+        if (quantityDelta != null) {
+          quantityByAsset[assetId] =
+              (quantityByAsset[assetId] ?? 0) + quantityDelta;
+        }
+        if (pricePerUnit != null) {
+          priceByAsset[assetId] = pricePerUnit;
+        }
+
+        final newAssetValue =
+            (quantityByAsset[assetId] ?? 0) * (priceByAsset[assetId] ?? 0);
+        final newValue = convertCurrency(
+          newAssetValue,
+          from: currencyByAsset[assetId] ?? targetCurrency,
+          to: targetCurrency,
+          settings: settings,
+        );
+        convertedValueByAsset[assetId] = newValue;
+        total += newValue - oldValue;
+
+        final day = DateTime(createdAt.year, createdAt.month, createdAt.day);
+        dailyValue[day] = total;
+      }
+
+      return dailyValue.entries
+          .map((entry) => NetWorthPoint(date: entry.key, value: entry.value))
+          .toList(growable: false)
+        ..sort((a, b) => a.date.compareTo(b.date));
+    });
+  }
+
   Stream<List<AssetValuePoint>> watchAssetValueHistory(String assetId) {
     return (_db.select(_db.assetEvents)
           ..where((t) => t.assetId.equals(assetId))

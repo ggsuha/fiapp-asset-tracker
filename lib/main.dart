@@ -12,12 +12,15 @@ class Fiapp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const brandGreen = Color(0xFF00A86B);
+    const appBackground = Color(0xFFF4F7F4);
+
     final base = ThemeData(
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF0E7490),
+        seedColor: brandGreen,
         brightness: Brightness.light,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF7FAFC),
+      scaffoldBackgroundColor: appBackground,
       useMaterial3: true,
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );
@@ -28,46 +31,80 @@ class Fiapp extends StatelessWidget {
       theme: base.copyWith(
         appBarTheme: const AppBarTheme(
           elevation: 0,
-          backgroundColor: Colors.transparent,
+          backgroundColor: appBackground,
           surfaceTintColor: Colors.transparent,
+          centerTitle: false,
+          titleTextStyle: TextStyle(
+            color: Color(0xFF111827),
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+          iconTheme: IconThemeData(color: Color(0xFF1F2937)),
         ),
         cardTheme: CardThemeData(
           margin: EdgeInsets.symmetric(vertical: 6),
           elevation: 0,
-          color: Colors.white.withValues(alpha: 0.9),
+          color: Colors.white,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: const Color(0xFF1F2937).withValues(alpha: 0.08),
+            ),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.88),
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: const Color(0xFF1F2937).withValues(alpha: 0.12),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: const Color(0xFF1F2937).withValues(alpha: 0.12),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF0E7490), width: 1.3),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: brandGreen, width: 1.4),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: brandGreen,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: brandGreen,
+          foregroundColor: Colors.white,
           shape: StadiumBorder(),
           elevation: 2,
+        ),
+        textTheme: base.textTheme.apply(
+          bodyColor: const Color(0xFF111827),
+          displayColor: const Color(0xFF111827),
         ),
       ),
       home: const DashboardScreen(),

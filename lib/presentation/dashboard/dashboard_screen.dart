@@ -6,11 +6,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/currency.dart';
 import '../../core/formatters.dart';
 import '../../domain/models.dart';
 import '../../providers/app_providers.dart';
 import '../wallet/wallet_detail_screen.dart';
+
+enum _HomeChartRange {
+  oneDay,
+  oneMonth,
+  threeMonths,
+  ytd,
+  oneYear,
+  threeYears,
+  fiveYears,
+  all,
+}
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -20,13 +30,20 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  static const _brandGreen = Color(0xFF00A86B);
+  static const _brandGreenDark = Color(0xFF0A8F5B);
+  static const _bgTop = Color(0xFFF2F7F3);
+  static const _bgBottom = Color(0xFFEFF6F1);
+
   bool _showWalletFab = false;
+  _HomeChartRange _selectedHomeRange = _HomeChartRange.oneMonth;
+  int? _selectedHomeSpotIndex;
 
   BoxDecoration get _backgroundDecoration => const BoxDecoration(
     gradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [Color(0xFFEAF6FF), Color(0xFFF8FBFF), Color(0xFFF6FBF8)],
+      colors: [_bgTop, _bgBottom],
     ),
   );
 
@@ -35,7 +52,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     WidgetRef ref,
   ) async {
     var name = '';
-    var currency = 'IDR';
 
     await showDialog<void>(
       context: context,
@@ -58,33 +74,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   onChanged: (value) => name = value,
                   decoration: const InputDecoration(hintText: 'Wallet name'),
                 ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Currency',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: currency,
-                  decoration: const InputDecoration(
-                    hintText: 'Select currency',
-                  ),
-                  items: kSupportedCurrencies
-                      .map(
-                        (item) =>
-                            DropdownMenuItem(value: item, child: Text(item)),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setState(() => currency = value);
-                  },
-                ),
               ],
             ),
             actions: [
@@ -100,7 +89,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   }
                   await ref
                       .read(walletRepositoryProvider)
-                      .createWallet(name: trimmedName, currency: currency);
+                      .createWallet(name: trimmedName, currency: 'IDR');
                   if (context.mounted) {
                     Navigator.of(context).pop();
                   }
@@ -110,127 +99,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Future<void> _showCurrencySettingsDialog(
-    BuildContext context,
-    WidgetRef ref,
-    CurrencySettings settings,
-  ) async {
-    var mainCurrency = settings.mainCurrency;
-    var usdToIdrRateText = settings.usdToIdrRate.toStringAsFixed(2);
-    var sgdToIdrRateText = settings.sgdToIdrRate.toStringAsFixed(2);
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Currency Settings'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Main Currency',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: mainCurrency,
-                  decoration: const InputDecoration(
-                    hintText: 'Select currency',
-                  ),
-                  items: kSupportedCurrencies
-                      .map(
-                        (item) =>
-                            DropdownMenuItem(value: item, child: Text(item)),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setState(() => mainCurrency = value);
-                  },
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'USD to IDR Rate',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  initialValue: usdToIdrRateText,
-                  onChanged: (value) => usdToIdrRateText = value,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. 16000',
-                    helperText: '1 USD = ? IDR',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'SGD to IDR Rate',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  initialValue: sgdToIdrRateText,
-                  onChanged: (value) => sgdToIdrRateText = value,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. 12000',
-                    helperText: '1 SGD = ? IDR',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final usdRate = double.tryParse(usdToIdrRateText.trim());
-                final sgdRate = double.tryParse(sgdToIdrRateText.trim());
-                if (usdRate == null || usdRate <= 0) {
-                  return;
-                }
-                if (sgdRate == null || sgdRate <= 0) {
-                  return;
-                }
-                await ref
-                    .read(settingsRepositoryProvider)
-                    .updateCurrencySettings(
-                      mainCurrency: mainCurrency,
-                      usdToIdrRate: usdRate,
-                      sgdToIdrRate: sgdRate,
-                    );
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -281,10 +149,155 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  DateTime? _homeRangeStart(_HomeChartRange range, DateTime now) {
+    switch (range) {
+      case _HomeChartRange.oneDay:
+        return now.subtract(const Duration(days: 1));
+      case _HomeChartRange.oneMonth:
+        return now.subtract(const Duration(days: 30));
+      case _HomeChartRange.threeMonths:
+        return now.subtract(const Duration(days: 90));
+      case _HomeChartRange.ytd:
+        return DateTime(now.year);
+      case _HomeChartRange.oneYear:
+        return DateTime(now.year - 1, now.month, now.day);
+      case _HomeChartRange.threeYears:
+        return DateTime(now.year - 3, now.month, now.day);
+      case _HomeChartRange.fiveYears:
+        return DateTime(now.year - 5, now.month, now.day);
+      case _HomeChartRange.all:
+        return null;
+    }
+  }
+
+  List<NetWorthPoint> _filterNetWorthByRange(List<NetWorthPoint> points) {
+    if (points.isEmpty) {
+      return points;
+    }
+
+    final sorted = [...points]..sort((a, b) => a.date.compareTo(b.date));
+    final start = _homeRangeStart(_selectedHomeRange, DateTime.now());
+    if (start == null) {
+      return sorted;
+    }
+
+    final filtered = sorted
+        .where((point) => !point.date.isBefore(start))
+        .toList(growable: false);
+    return filtered.isEmpty ? [sorted.last] : filtered;
+  }
+
+  String _homeRangeLabel(_HomeChartRange range) {
+    switch (range) {
+      case _HomeChartRange.oneDay:
+        return '1D';
+      case _HomeChartRange.oneMonth:
+        return '1M';
+      case _HomeChartRange.threeMonths:
+        return '3M';
+      case _HomeChartRange.ytd:
+        return 'YTD';
+      case _HomeChartRange.oneYear:
+        return '1Y';
+      case _HomeChartRange.threeYears:
+        return '3Y';
+      case _HomeChartRange.fiveYears:
+        return '5Y';
+      case _HomeChartRange.all:
+        return 'All';
+    }
+  }
+
+  String _rangePeriodLabel(_HomeChartRange range) {
+    switch (range) {
+      case _HomeChartRange.oneDay:
+        return '1 Hari';
+      case _HomeChartRange.oneMonth:
+        return '1 Bulan';
+      case _HomeChartRange.threeMonths:
+        return '3 Bulan';
+      case _HomeChartRange.ytd:
+        return 'YTD';
+      case _HomeChartRange.oneYear:
+        return '1 Tahun';
+      case _HomeChartRange.threeYears:
+        return '3 Tahun';
+      case _HomeChartRange.fiveYears:
+        return '5 Tahun';
+      case _HomeChartRange.all:
+        return 'All Time';
+    }
+  }
+
+  String _maskedMoney(double value, bool hidden) {
+    if (hidden) {
+      return '***';
+    }
+    return asMoney(value);
+  }
+
+  Widget _buildHomeRangeFilter() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _HomeChartRange.values
+            .map((range) {
+              final selected = range == _selectedHomeRange;
+              return Padding(
+                padding: const EdgeInsets.only(right: 18),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    setState(() {
+                      _selectedHomeRange = range;
+                      _selectedHomeSpotIndex = null;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _homeRangeLabel(range),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: selected
+                                ? _brandGreen
+                                : const Color(0xFF6B7280),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOut,
+                          height: 3,
+                          width: 20,
+                          decoration: BoxDecoration(
+                            color: selected ? _brandGreen : Colors.transparent,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            })
+            .toList(growable: false),
+      ),
+    );
+  }
+
   LineChartData _buildNetWorthChartData(
-    List<NetWorthPoint> points,
-    String currency,
-  ) {
+    List<NetWorthPoint> points, {
+    required int selectedSpotIndex,
+    required void Function(int? index) onSpotSelected,
+    required bool hideValues,
+  }) {
     final fixedPoints = points.length == 1
         ? [
             points.first,
@@ -294,72 +307,118 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ]
         : points;
+    final safeSelectedIndex = selectedSpotIndex.clamp(
+      0,
+      fixedPoints.length - 1,
+    );
 
     final maxValue = fixedPoints.fold<double>(
       0,
       (prev, item) => max(prev, item.value),
     );
-    final yInterval = max(maxValue / 4, 1.0);
+    final minValue = fixedPoints.fold<double>(
+      fixedPoints.first.value,
+      (prev, item) => min(prev, item.value),
+    );
+    final range = max(maxValue - minValue, 1.0);
 
     return LineChartData(
       minX: 0,
       maxX: (fixedPoints.length - 1).toDouble(),
-      minY: 0,
-      maxY: max(maxValue * 1.2, 1.0),
+      minY: max(minValue - (range * 0.18), 0),
+      maxY: maxValue + (range * 0.18),
       borderData: FlBorderData(show: false),
-      gridData: FlGridData(show: true, horizontalInterval: yInterval),
-      titlesData: FlTitlesData(
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
+      clipData: const FlClipData.all(),
+      gridData: FlGridData(show: false),
+      titlesData: const FlTitlesData(
+        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      ),
+      lineTouchData: LineTouchData(
+        enabled: true,
+        handleBuiltInTouches: true,
+        touchCallback: (_, touchResponse) {
+          final spots = touchResponse?.lineBarSpots;
+          if (spots == null || spots.isEmpty) return;
+          onSpotSelected(spots.first.x.toInt());
+        },
+        touchTooltipData: LineTouchTooltipData(
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
+          tooltipPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8,
+          ),
+          getTooltipColor: (_) => Colors.white,
+          getTooltipItems: (spots) => spots
+              .map((spot) {
+                final index = spot.x.toInt().clamp(0, fixedPoints.length - 1);
+                final point = fixedPoints[index];
+                return LineTooltipItem(
+                  '${asCompactDate(point.date)}\n${_maskedMoney(point.value, hideValues)}',
+                  const TextStyle(
+                    color: Color(0xFF111827),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                );
+              })
+              .toList(growable: false),
         ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            interval: max((fixedPoints.length / 4).floorToDouble(), 1.0),
-            getTitlesWidget: (value, _) {
-              final index = value.round();
-              if (index < 0 || index >= fixedPoints.length) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  asCompactDate(fixedPoints[index].date),
-                  style: const TextStyle(fontSize: 10),
+        getTouchedSpotIndicator: (_, spotIndexes) {
+          return spotIndexes
+              .map(
+                (_) => TouchedSpotIndicatorData(
+                  FlLine(
+                    color: _brandGreenDark.withValues(alpha: 0.45),
+                    strokeWidth: 1,
+                  ),
+                  FlDotData(
+                    getDotPainter: (spot, percent, bar, index) =>
+                        FlDotCirclePainter(
+                          radius: 5,
+                          color: _brandGreen,
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        ),
+                  ),
                 ),
-              );
-            },
-          ),
-        ),
-        leftTitles: AxisTitles(
-          axisNameWidget: Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(currency, style: const TextStyle(fontSize: 10)),
-          ),
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 44,
-            interval: yInterval,
-            getTitlesWidget: (value, _) => Text(
-              value >= 1000
-                  ? '${(value / 1000).toStringAsFixed(0)}K'
-                  : value.toStringAsFixed(0),
-              style: const TextStyle(fontSize: 10),
-            ),
-          ),
-        ),
+              )
+              .toList(growable: false);
+        },
       ),
       lineBarsData: [
         LineChartBarData(
           isCurved: true,
-          color: const Color(0xFF2563EB),
-          dotData: FlDotData(show: points.length == 1),
+          color: _brandGreen,
+          dotData: FlDotData(
+            show: true,
+            checkToShowDot: (spot, barData) =>
+                spot.x.toInt() == safeSelectedIndex,
+            getDotPainter: (spot, percent, barData, index) =>
+                FlDotCirclePainter(
+                  radius: 5,
+                  color: _brandGreen,
+                  strokeWidth: 2,
+                  strokeColor: Colors.white,
+                ),
+          ),
           belowBarData: BarAreaData(
             show: true,
-            color: const Color(0xFFBFDBFE).withValues(alpha: 0.5),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                _brandGreen.withValues(alpha: 0.28),
+                _brandGreen.withValues(alpha: 0.02),
+              ],
+            ),
           ),
-          barWidth: 3,
+          barWidth: 3.2,
+          showingIndicators: [safeSelectedIndex],
           spots: [
             for (var i = 0; i < fixedPoints.length; i++)
               FlSpot(i.toDouble(), fixedPoints[i].value),
@@ -373,27 +432,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final netWorth = ref.watch(netWorthProvider);
     final walletSummariesAsync = ref.watch(walletSummariesProvider);
-    final settingsAsync = ref.watch(currencySettingsProvider);
-    final settings = settingsAsync.asData?.value ?? CurrencySettings.defaults;
     final netWorthHistoryAsync = ref.watch(netWorthHistoryProvider);
+    final hideValues = ref.watch(hideValuesProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Fiapp'),
+        title: const Text('Portofolio'),
         actions: [
           IconButton(
             onPressed: () => setState(() => _showWalletFab = !_showWalletFab),
             tooltip: _showWalletFab ? 'Hide Add Wallet' : 'Show Add Wallet',
             icon: Icon(
               _showWalletFab
-                  ? Icons.visibility_off_outlined
+                  ? Icons.account_balance_wallet
                   : Icons.account_balance_wallet_outlined,
             ),
           ),
           IconButton(
-            onPressed: () =>
-                _showCurrencySettingsDialog(context, ref, settings),
-            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => ref.read(hideValuesProvider.notifier).toggle(),
+            tooltip: hideValues ? 'Show Values' : 'Hide Values',
+            icon: Icon(
+              hideValues
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+            ),
           ),
           PopupMenuButton<String>(
             onSelected: (value) async {
@@ -438,13 +500,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF0E7490), Color(0xFF0369A1)],
+                  colors: [_brandGreen, _brandGreenDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0369A1).withValues(alpha: 0.22),
+                    color: _brandGreen.withValues(alpha: 0.28),
                     blurRadius: 22,
                     offset: const Offset(0, 10),
                   ),
@@ -457,12 +519,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Text(
                     'Total Net Worth',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Colors.white.withValues(alpha: 0.92),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    asMoney(netWorth, currency: settings.mainCurrency),
+                    _maskedMoney(netWorth, hideValues),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -473,22 +535,128 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Net Worth Over Time',
-              style: Theme.of(context).textTheme.titleMedium,
+              'Net Worth',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
+            netWorthHistoryAsync.when(
+              data: (points) {
+                if (points.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                final filteredPoints = _filterNetWorthByRange(points);
+                final startValue = filteredPoints.first.value;
+                final endValue = filteredPoints.last.value;
+                final netDiff = endValue - startValue;
+                final netDiffPct = startValue == 0
+                    ? 0
+                    : (netDiff / startValue) * 100;
+                final isUp = netDiff >= 0;
+                final trendColor = isUp
+                    ? _brandGreenDark
+                    : const Color(0xFFB91C1C);
+                final trendPrefix = isUp ? '+' : '-';
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isUp
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_downward_rounded,
+                        size: 16,
+                        color: trendColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        hideValues
+                            ? '***'
+                            : '$trendPrefix${asMoney(netDiff.abs())} ($trendPrefix${netDiffPct.abs().toStringAsFixed(2)}%)',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: trendColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _rangePeriodLabel(_selectedHomeRange),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: SizedBox(
-                  height: 240,
+                  height: 248,
                   child: netWorthHistoryAsync.when(
                     data: (points) {
                       if (points.isEmpty) {
                         return const Center(child: Text('No history yet'));
                       }
-                      return LineChart(
-                        _buildNetWorthChartData(points, settings.mainCurrency),
+                      final filteredPoints = _filterNetWorthByRange(points);
+                      final minPoint = filteredPoints.reduce(
+                        (a, b) => a.value <= b.value ? a : b,
+                      );
+                      final maxPoint = filteredPoints.reduce(
+                        (a, b) => a.value >= b.value ? a : b,
+                      );
+                      final safeIndex =
+                          (_selectedHomeSpotIndex != null &&
+                              _selectedHomeSpotIndex! < filteredPoints.length)
+                          ? _selectedHomeSpotIndex!
+                          : filteredPoints.length - 1;
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: LineChart(
+                              _buildNetWorthChartData(
+                                filteredPoints,
+                                selectedSpotIndex: safeIndex,
+                                hideValues: hideValues,
+                                onSpotSelected: (index) {
+                                  setState(() {
+                                    _selectedHomeSpotIndex = index;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Text(
+                              _maskedMoney(maxPoint.value, hideValues),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 2,
+                            left: 2,
+                            child: Text(
+                              _maskedMoney(minPoint.value, hideValues),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                        ],
                       );
                     },
                     loading: () =>
@@ -498,6 +666,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+            _buildHomeRangeFilter(),
             const SizedBox(height: 16),
             Text('Wallets', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -515,33 +685,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF0E7490,
-                                ).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
+                                color: _brandGreen.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
                                 Icons.account_balance_wallet_outlined,
-                                color: Color(0xFF0E7490),
+                                color: _brandGreenDark,
                               ),
                             ),
                             title: Text(wallet.name),
-                            subtitle: Text(wallet.currency),
+                            subtitle: const Text('IDR'),
                             trailing: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  asMoney(
-                                    wallet.totalValue,
-                                    currency: wallet.currency,
-                                  ),
+                                  _maskedMoney(wallet.totalValue, hideValues),
                                   style: Theme.of(context).textTheme.titleSmall,
                                 ),
                                 const Icon(
                                   Icons.chevron_right,
                                   size: 16,
-                                  color: Colors.black54,
+                                  color: Color(0xFF4B5563),
                                 ),
                               ],
                             ),

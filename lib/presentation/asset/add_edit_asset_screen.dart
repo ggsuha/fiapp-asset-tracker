@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/currency.dart';
 import '../../core/formatters.dart';
 import '../../data/database/app_database.dart';
 import '../../domain/models.dart';
@@ -20,13 +19,15 @@ class AddEditAssetScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
+  static const _bgTop = Color(0xFFF2F7F3);
+  static const _bgBottom = Color(0xFFEFF6F1);
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _quantityController = TextEditingController(text: '0');
   final _priceController = TextEditingController(text: '0');
   final _noteController = TextEditingController();
   AssetType _type = AssetType.custom;
-  String _currency = 'IDR';
   bool _initialized = false;
   bool _saving = false;
 
@@ -59,7 +60,7 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
           assetId: widget.assetId!,
           name: _nameController.text.trim(),
           type: _type,
-          currency: _currency,
+          currency: 'IDR',
           quantity: quantity,
           price: price,
           note: note,
@@ -69,7 +70,7 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
           walletId: widget.walletId,
           name: _nameController.text.trim(),
           type: _type,
-          currency: _currency,
+          currency: 'IDR',
           quantity: quantity,
           price: price,
           note: note,
@@ -111,7 +112,6 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
           }
           setState(() {
             _nameController.text = asset.name;
-            _currency = asset.currency;
             _type = AssetType.fromDb(asset.type);
             _quantityController.text = snapshot.currentQuantity.toString();
             _priceController.text = snapshot.currentPrice.toString();
@@ -128,7 +128,7 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF2F8FF), Color(0xFFF9FCFF), Color(0xFFF7FBF8)],
+            colors: [_bgTop, _bgBottom],
           ),
         ),
         child: Form(
@@ -137,15 +137,18 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(18),
+                  color: Colors.white,
                 ),
                 child: Text(
                   widget.isEdit
                       ? 'Update your asset values and metadata'
                       : 'Create a new asset in this wallet',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF374151),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -170,21 +173,9 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
                 onChanged: (value) => setState(() => _type = value ?? _type),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _currency,
-                decoration: const InputDecoration(labelText: 'Currency'),
-                items: kSupportedCurrencies
-                    .map(
-                      (item) =>
-                          DropdownMenuItem(value: item, child: Text(item)),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  setState(() => _currency = value);
-                },
+              const InputDecorator(
+                decoration: InputDecoration(labelText: 'Currency'),
+                child: Text('IDR'),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -221,7 +212,7 @@ class _AddEditAssetScreenState extends ConsumerState<AddEditAssetScreen> {
               ],
               const SizedBox(height: 16),
               Text(
-                'Preview: ${asMoney((double.tryParse(_quantityController.text) ?? 0) * (double.tryParse(_priceController.text) ?? 0), currency: _currency)}',
+                'Preview: ${asMoney((double.tryParse(_quantityController.text) ?? 0) * (double.tryParse(_priceController.text) ?? 0))}',
               ),
             ],
           ),

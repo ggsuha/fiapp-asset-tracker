@@ -45,6 +45,17 @@ final currencySettingsProvider = StreamProvider<CurrencySettings>((ref) {
   return ref.watch(settingsRepositoryProvider).watchCurrencySettings();
 });
 
+class HideValuesNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
+final hideValuesProvider = NotifierProvider<HideValuesNotifier, bool>(
+  HideValuesNotifier.new,
+);
+
 final walletsProvider = StreamProvider<List<Wallet>>((ref) {
   return ref.watch(walletRepositoryProvider).watchWallets();
 });
@@ -177,6 +188,19 @@ final netWorthHistoryProvider = StreamProvider<List<NetWorthPoint>>((ref) {
         targetCurrency: (settings ?? CurrencySettings.defaults).mainCurrency,
       );
 });
+
+final walletValueHistoryProvider =
+    StreamProvider.family<List<NetWorthPoint>, String>((ref, walletId) {
+      final settings = ref.watch(currencySettingsProvider).asData?.value;
+      final resolved = settings ?? CurrencySettings.defaults;
+      return ref
+          .watch(assetRepositoryProvider)
+          .watchWalletValueHistory(
+            walletId,
+            settings: resolved,
+            targetCurrency: resolved.mainCurrency,
+          );
+    });
 
 final assetValueHistoryProvider =
     StreamProvider.family<List<AssetValuePoint>, String>((ref, assetId) {

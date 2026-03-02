@@ -1,5 +1,20 @@
+String _asDottedThousands(double value) {
+  final whole = value.round().abs().toString();
+  final buffer = StringBuffer();
+
+  for (var i = 0; i < whole.length; i++) {
+    final reversedIndex = whole.length - i;
+    buffer.write(whole[i]);
+    if (reversedIndex > 1 && reversedIndex % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+
+  return '${value < 0 ? '-' : ''}$buffer';
+}
+
 String asMoney(double value, {String currency = 'IDR'}) {
-  return '${currency.toUpperCase()} ${value.toStringAsFixed(0)}';
+  return 'IDR ${_asDottedThousands(value)}';
 }
 
 String asCompactDate(DateTime value) {
@@ -9,5 +24,5 @@ String asCompactDate(DateTime value) {
 }
 
 String asWholeNumber(double value) {
-  return value.toStringAsFixed(0);
+  return _asDottedThousands(value);
 }
